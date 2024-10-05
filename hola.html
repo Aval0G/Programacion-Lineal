@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programación Lineal con Gráfica y Método Simplex</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h2>Gráfica de Programación Lineal con Método Simplex</h2>
+    <div id="graph"></div>
+
+    <script>
+        // Restricciones: Ax + By >= C
+        const constraints = [
+            { A: 2, B: 3, C: 30, type: '>=' },  // 2A + 3B >= 30 (vitamina W)
+            { A: 4, B: 3, C: 50, type: '>=' },  // 4A + 3B >= 50 (vitamina X)
+            { A: 7, B: 6, C: 60, type: '>=' }   // 7A + 6B >= 60 (vitamina Y)
+        ];
+
+        // Definir el rango de x (cantidad de alimento A)
+        const xRange = [0, 30];  // Poner un rango suficientemente amplio para visualizar
+
+        // Función para obtener los puntos de la recta de una restricción
+        function getPoints(A, B, C, xRange) {
+            const x1 = xRange[0];
+            const y1 = (C - A * x1) / B;
+            const x2 = xRange[1];
+            const y2 = (C - A * x2) / B;
+            return { x: [x1, x2], y: [y1, y2] };
+        }
+
+        // Trazar las restricciones
+        const traces = constraints.map((constraint, index) => {
+            const points = getPoints(constraint.A, constraint.B, constraint.C, xRange);
+
+            let lineStyle = { dash: 'dash' };
+            if (constraint.type === '>=') {
+                lineStyle = { dash: 'dot', color: 'red' }; // Diferente estilo para >=
+            }
+
+            return {
+                x: points.x,
+                y: points.y,
+                mode: 'lines',
+                name: `Restricción ${index + 1} (${constraint.type})`,
+                line: lineStyle
+            };
+        });
+
+        // Definir los ejes
+        const layout = {
+            title: 'Gráfica del Problema de la Dieta',
+            xaxis: { title: 'Cantidad de Alimento A (onzas)', range: [0, 30] },
+            yaxis: { title: 'Cantidad de Alimento B (onzas)', range: [0, 30] },
+            showlegend: true
+        };
+
+        // Graficar restricciones
+        Plotly.newPlot('graph', traces, layout);
+
+        // Función para resolver el problema de minimización con el Método Simplex
+        function simplexMethod(constraints, objective) {
+            const numVariables = objective.length;  // A y B
+
+            // Añadir variables de holgura negativas a las restricciones
+            const tableau = constraints.map((c, index) => {
+                const row = [...[c.A, c.B], ...Array(constraints.length).fill(0), c.C];
+                row[numVariables + index] = -1;  // Variable de holgura negativa
+                return row;
+            });
+
+            // Añadir fila para la función objetivo
+            tableau.push([...objective, ...Array(constraints.length).fill(0), 0]);
+
+            // Realizar iteraciones del método Simplex
+            while (true) {
+                // Determinar columna pivote (la que tiene el menor valor en la función objetivo)
+                const pivotCol = tableau[tableau.length - 1].slice(0, numVariables).reduce((minIdx, value, idx, arr) =>
+                    value < arr[minIdx] ? idx : minIdx, 0);
+
+                // Si el valor en la función objetivo no es negativo, se alcanza la solución óptima
+                if (tableau[tableau.length - 1][pivotCol] >= 0) break;
+
+                // Determinar fila pivote usando la regla del mínimo cociente
+                let pivotRow = -1;
+                let minRatio = Infinity;
+                for (let i = 0; i < tableau.length - 1; i++) {
+                    const ratio = tableau[i][tableau[0].length - 1] / tableau[i][pivotCol];
+                    if (ratio > 0 && ratio < minRatio) {
+                        minRatio = ratio;
+                        pivotRow = i;
+                    }
+                }
+
+                // Realizar operaciones fila para pivotear
+                const pivotValue = tableau[pivotRow][pivotCol];
+                tableau[pivotRow] = tableau[pivotRow].map(v => v / pivotValue);
+                for (let i = 0; i < tableau.length; i++) {
+                    if (i !== pivotRow) {
+                        const multiplier = tableau[i][pivotCol];
+                        tableau[i] = tableau[i].map((v, idx) => v - multiplier * tableau[pivotRow][idx]);
+                    }
+                }
+            }
+
+            // La solución óptima está en las variables básicas
+            return {
+                A: tableau[0][tableau[0].length - 1],
+                B: tableau[1][tableau[1].length - 1],
+                optimalValue: tableau[tableau.length - 1][tableau[0].length - 1]
+            };
+        }
+
+
+        // Definir la función objetivo (minimizar Z = 12A + 8B)
+        const objective = [12, 8];
+
+        // Resolver con el método Simplex
+        const solution = simplexMethod(constraints, objective);
+
+        // Mostrar los puntos A y B de la solución
+        const solutionPoints = [
+            {
+                x: [solution.A], // Punto correspondiente a A
+                y: [0], // Se ubica sobre el eje x
+                mode: 'markers',
+                marker: {
+                    color: 'blue',
+                    size: 10
+                },
+                name: 'Cantidad de Alimento A'
+            },
+            {
+                x: [0], // Punto correspondiente a B
+                y: [solution.B], // Se ubica sobre el eje y
+                mode: 'markers',
+                marker: {
+                    color: 'green',
+                    size: 10
+                },
+                name: 'Cantidad de Alimento B'
+            }
+        ];
+
+        traces.push(...solutionPoints);
+
+        Plotly.newPlot('graph', traces, layout);
+
+        console.log('Solución encontrada:');
+        console.log(`A (alimento A) = ${solution.A}`);
+        console.log(`B (alimento B) = ${solution.B}`);
+        console.log(`Costo mínimo total: ${solution.optimalValue}`);
+    </script>
+</body>
+</html>
