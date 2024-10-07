@@ -46,9 +46,6 @@ plt.plot(X_vals, Y_vals_fosfatos, label='0.05X + 0.07Y ≤ 0.06 (Fosfatos)', col
 plt.plot(X_vals, Y_vals_cloruro, label='0.02X + 0.01Y ≤ 0.015 (Cloruro)', color='green')
 
 # Área de factibilidad
-plt.fill_between(X_vals, 0, np.minimum(Y_vals_fosfatos, Y_vals_cloruro), 
-                 where=(np.minimum(Y_vals_fosfatos, Y_vals_cloruro) >= 0), 
-                 color='gray', alpha=0.5, label='Área factible')
 
 # Añadir líneas de la función objetivo para diferentes valores de Z (costos)
 Z_vals = [20, 22.5, 25, 27.5, 30]  # Valores del costo objetivo
